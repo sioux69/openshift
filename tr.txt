@@ -78,7 +78,7 @@ la receta es:
 	oc create -f xxx.json
 	
 	1. oc new-app mysql-ephemeral
-	2. oc new-app https://github.com/wordpress/wordpress
+	2. 	oc new-app https://github.com/wordpress/wordpress  --strategy=source
 	3. oc expose service wordpress
 
 https://www.quora.com/How-do-you-deploy-WordPress-on-OpenShift-3
