@@ -1,0 +1,839 @@
+…or create a new repository on the command line
+
+echo "# openshift" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git remote add origin https://github.com/sioux69/openshift.git
+git push -u origin master
+
+…or push an existing repository from the command line
+
+git remote add origin https://github.com/sioux69/openshift.git
+git push -u origin master
+
+
+[master]# ssh-keygen
+[master]# ssh-copy-id root@node
+[master]# ssh-copy-id root@master
+
+[master/node]# systemctl stop firewalld.service
+[master/node]# systemctl mask firewalld.service
+
+[master/node]# cd /etc/pki/ca-trust/source/anchors/
+[master/node]# scp root@workstation.lab.example.com:/etc/pki/tls/certs/example.com.crt  .
+[master/node]# update-ca-trust extract
+[aster/node]# curl https://workstation.lab.example.com:5000/v2/openshift3/php-55-rhel7/manifests/latest
+
+
+
+ cat /etc/sysconfig/docker-storage-setup
+DEVS=/dev/xvdb
+VG=docker-vg
+STORAGE_DRIVER=overlay2
+
+[master/node]# docker-storage-setup
+vgs lvs 
+
+node# cat  /etc/sysconfig/docker-storage
+master/node# systemctl start docker
+master/node# systemctl enable docker
+
+master# docker-registry-cli workstation.lab.example.com:5000 list all ssl #view all images
+
+
+
+
+----
+oc adm policy add-cluster-role-to-user cluster-admin [user] -> gives the cluster admin to the user, on the course it was to the user “admin”
+oc get nodes -> shows all the nodes 
+
+oc new-app php:5.6~http://services.lab.example.com/php-helloworld –name hello -> deploys “php-hellowordl” with php 5.6
+
+oc new-app -i php:5.6 http://services.lab.example.com/php-helloworld –name hello -> the same but without the “~”. But the last is recommended.
+Note:  to write “~” alt Gr  + 4 + spacebar or  Ascii alt +126
+
+
+---
+new-app  :creacion de aplicaciones en openshift
+
+wordpress
+
+https://www.redhat.com/en/blog/part-2-connecting-ocp-application-mysql-instance
+
+
+cojonudo para examen:
+
+https://techbloc.net/archives/2607
+
+la receta es:
+
+    oc new-project wordpress
+    oc create -f https://raw.githubusercontent.com/openshift/openshift-ansible/master/roles/openshift_examples/files/examples/v1.3/db-templates/mysql-ephemeral-template.json
+	no existe
+	
+	oc create https://github.com/openshift/origin/blob/master/examples/db-templates/mysql-ephemeral-template.json
+	
+	wget  https://github.com/openshift/origin/blob/master/examples/db-templates/mysql-ephemeral-template.json
+	oc create -f xxx.json
+	
+	1. oc new-app mysql-ephemeral
+	2. oc new-app https://github.com/wordpress/wordpress
+	3. oc expose service wordpress
+
+https://www.quora.com/How-do-you-deploy-WordPress-on-OpenShift-3
+
+importante si no hemos asignado las passw  cuando se ha lanzado el DC podemos cambiar el entorno asi:
+2 passwords
+oc set env dc <dc_name> [<dc_name_2> ...] \
+  MYSQL_PASSWORD=<new_password> \
+  MYSQL_ROOT_PASSWORD=<new_root_password>
+
+---
+
+oc new-app --search mysql:5.7
+Image streams (oc new-app --image-stream=<image-stream> [--code=<source>])
+-----
+mysql
+  Project: openshift
+  Tags:    5.7
+
+Encontre el problema:
+
+oc new-app --image-stream=mysql:5.7  --allow-missing-imagestream-tags
+error: no tags found on matching image stream: "openshift/mysql"
+
+The image stream "openshift/mysql" exists, but it has no tags.
+
+  Use --allow-missing-imagestream-tags to use this image stream
+
+
+posible solucion: oc tag source
+
+oc tag --source=docker lakshminp/apache:v1 myproject/apache:latest
+Tag apache:latest set to lakshminp/apache:v1.
+
+
+I’m essentially tagging “lakshminp/apache:v1” as “apache:latest” in my project’s namespace. This creates an imagestream of the above image in my OpenShift cluster.(More on
+
+
+pero la solucion mas facil es: hacer un tag hacia tu proyecto push:
+
+oc tag openshift/mysql push/mysql:5.7
+Tag mysql:5.7 set to openshift/mysql.
+
+de tal forma que en registry interno tenemos:
+
+oc get is
+NAME                    DOCKER REPO                                                   TAGS      UPDATED
+hello-world             docker-registry.default.svc:5000/push/hello-world             ultima    7 days ago
+jenkins                 docker-registry.default.svc:5000/push/jenkins                 latest    8 days ago
+my-wordpress-site-img   docker-registry.default.svc:5000/push/my-wordpress-site-img
+mysql                   docker-registry.default.svc:5000/push/mysql                   5.7
+wordpress               docker-registry.default.svc:5000/push/wordpress               latest    40 hours ago
+
+oc set env dc/mysql --list
+# deploymentconfigs/mysql, container mysql
+# MYSQL_USER from secret mysql, key database-user
+# MYSQL_PASSWORD from secret mysql, key database-password
+# MYSQL_ROOT_PASSWORD from secret mysql, key database-root-password
+# MYSQL_DATABASE from secret mysql, key database-name
+
+
+
+oc new-app --image-stream=push/mysql:5.7
+error: no tags found on matching image stream: "push/mysql"
+
+The image stream "push/mysql" exists, but it has no tags.
+
+  Use --allow-missing-imagestream-tags to use this image stream
+
+ESENCIAL:
+To allow any applications deployed within a project the ability to run as the user the
+container image specifies, including root, a cluster admin can run against a project
+the command:
+
+$ oadm policy add-scc-to-user anyuid -z default
+
+----------------
+Usage:
+  oc new-app (IMAGE | IMAGESTREAM | TEMPLATE | PATH | URL ...) [flags]
+
+The 'oc new-app' command will match arguments to the following types:
+
+  1. Images tagged into image streams in the current project or the 'openshift' project
+     - if you don't specify a tag, we'll add ':latest'
+  2. Images in the Docker Hub, on remote registries, or on the local Docker engine
+  3. Templates in the current project or the 'openshift' project
+  4. Git repository URLs or local paths that point to Git repositories
+
+--allow-missing-images can be used to point to an image that does not exist yet.
+
+Examples:
+  # List all local templates and image streams that can be used to create an app
+  oc new-app --list
+
+  # Create an application based on the source code in the current git repository (with a public remote)
+  # and a Docker image
+  oc new-app . --docker-image=repo/langimage
+
+  # Create a Ruby application based on the provided [image]~[source code] combination
+  oc new-app centos/ruby-25-centos7~https://github.com/sclorg/ruby-ex.git
+
+  # Use the public Docker Hub MySQL image to create an app. Generated artifacts will be labeled with db=mysql
+  oc new-app mysql MYSQL_USER=user MYSQL_PASSWORD=pass MYSQL_DATABASE=testdb -l db=mysql
+
+  # Use a MySQL image in a private registry to create an app and override application artifacts' names
+  oc new-app --docker-image=myregistry.com/mycompany/mysql --name=private
+
+  # Create an application from a remote repository using its beta4 branch
+  oc new-app https://github.com/openshift/ruby-hello-world#beta4
+
+  # Create an application based on a stored template, explicitly setting a parameter value
+  oc new-app --template=ruby-helloworld-sample --param=MYSQL_USER=admin
+
+  # Create an application from a remote repository and specify a context directory
+  oc new-app https://github.com/youruser/yourgitrepo --context-dir=src/build
+
+  # Create an application from a remote private repository and specify which existing secret to use
+  oc new-app https://github.com/youruser/yourgitrepo --source-secret=yoursecret
+
+  # Create an application based on a template file, explicitly setting a parameter value
+  oc new-app --file=./example/myapp/template.json --param=MYSQL_USER=admin
+
+  # Search all templates, image streams, and Docker images for the ones that match "ruby"
+  oc new-app --search ruby
+
+  # Search for "ruby", but only in stored templates (--template, --image-stream and --docker-image
+  # can be used to filter search results)
+  oc new-app --search --template=ruby
+
+  # Search for "ruby" in stored templates and print the output as an YAML
+  oc new-app --search --template=ruby --output=yaml
+
+-----
+
+
+Create Secure route (edge type):
+	Documentation: https://docs.openshift.com/container-platform/3.9/install_config/router/default_haproxy_router.html#using-secured-routes
+
+openssl genrsa –out example.key 2048 -> create private key
+openssl req -new -key example.key -out example.csr -subj '/CN=localhost' -> create the cert using the generated key
+openssl x509 –req –days 366 –in example.csr –signkey example.key –out example.crt -> generate certificate using the key and csr
+
+oc create route edge --service=mi-app --hostname=mi-ruta.apps.9553.example.opentlc.com –key=example.key –cert=example.crt -> create the router edge type
+
+The –hostname should have the subdomain. This is on /etc/origin/master/master-config.yaml
+
+
+Documentation: https://docs.openshift.com/container-platform/3.9/install_config/router/default_haproxy_router.html#using-wildcard-routes
+	
+	oc delete all –l router=router –n default -> deletes the Openshift router
+	oc adm router --replicas=0 –n default -> creates the Openshift router
+oc set env dc/router ROUTER_ALLOW_WILDCARD_ROUTES=true –n default
+oc scale dc/router --replicas=2 –n default
+oc expose svc my-app --wildcard-policy=Subdomain --hostname='www. apps.9553.example.opentlc.com’ -> on your project expose the service of your application with the wildcard
+
+Access the router's statistics page:
+	Documentation: https://docs.openshift.com/container-platform/3.9/install_config/router/default_haproxy_router.html#exposing-the-router-metrics
+
+
+------
+oc describe clusterrole.rbac -> to view the cluster roles and their associated rule sets.
+oc describe clusterrolebinding.rbac -> to view the current set of cluster role bindings, which show the users and groups that are bound to various roles.
+oc describe rolebinding.rbac-> to view the current set of local role bindings, which show the users and groups that are bound to various roles
+
+Managing Security Context Constraints (RBAC)
+Note: you don't have to memorize this! You have to search on the Openshift Documentation Managing Role-based Access Control (RBAC) with the word RBAC (https://docs.openshift.com/container-platform/3.9/admin_guide/manage_rbac.html#managing-role-bindings
+)
+Managing role bindings
+Adding, or binding, a role to users or groups gives the user or group the relevant access granted by the role. You can add and remove roles to and from users and groups using oc adm policy commands.
+When managing a user or group’s associated roles for local role bindings using the following operations, a project may be specified with the -n flag. If it is not specified, then the current project is used.
+
+Command	Description
+$ oc adm policy who-can <verb> <resource>	Indicates which users can perform an action on a resource.
+$ oc adm policy add-role-to-user <role> <username>	Binds a given role to specified users in the current project.
+$ oc adm policy remove-role-from-user <role> <username>	Removes a given role from specified users in the current project.
+$ oc adm policy remove-user <username>	Removes specified users and all of their roles in the current project.
+$ oc adm policy add-role-to-group <role> <groupname>	Binds a given role to specified groups in the current project.
+$ oc adm policy remove-role-from-group <role> <groupname>	Removes a given role from specified groups in the current project.
+$ oc adm policy remove-group <groupname>	Removes specified groups and all of their roles in the current project.
+
+You can also manage cluster role bindings using the following operations. The -n flag is not used for these operations because cluster role bindings use non-namespaced resources.
+Table 2. Cluster role binding operations
+
+Command	Description
+$ oc adm policy add-cluster-role-to-user <role> <username>	Binds a given role to specified users for all projects in the cluster.
+
+
+$ oc adm policy remove-cluster-role-from-user <role> <username>	Removes a given role from specified users for all projects in the cluster.
+$ oc adm policy add-cluster-role-to-group <role> <groupname>	Binds a given role to specified groups for all projects in the cluster.
+$ oc adm policy remove-cluster-role-from-group <role> <groupname>	Removes a given role from specified groups for all projects in the cluster.
+
+For example, you can add the admin role to the alice user in joe-project by running:
+oc adm policy add-role-to-user admin alice -n joe-project
+oc adm policy add-role-to-user admin developer –n example -> you give to the user developer admin rights on the project called example
+
+Security Context Constrains (SCCS)
+
+Documentation: https://docs.openshift.com/container-platform/3.9/admin_guide/manage_scc.html
+
+oc get scc -> lists all the available scc
+
+For example:
+oc adm policy add-scc-to-user anyuid –z default
+
+If you need a container to be ran as a root:
+oc create serviceaccount useroot-> create a service account named useroot
+oc patch dc/my-app --patch '{"spec":{"template":{"spec":{"serviceAccountName":"useroot"}}}}'
+
+oc adm policy add-scc-to-user anyuid –z useroot
+
+Membership  and management using the cli:
+
+oc create user demo-user -> creates the user domo-user
+
+htpasswd -b  /etc/origin/master/htpasswd demo-user redhat -> creates the user with the passowrd "redhat" for the identity provider, this is necessary. To know which is the file find it out on the config-master.yaml file. 
+
+NOTE: if you have more than one master like in the RedHat laboratory, you have to execute the last command on the three master.
+
+oc policy add-role-to-user edit demo-user -> add the edit role to the user
+ oc policy remove-role-to-user edit demo-user -> removes the edit role to the user
+
+oc whoami -t -> shows the token that is created for a user to communicate with the API and expires every 24 hours
+
+
+
+Creating a secret
+
+Documentation: https://docs.openshift.com/container-platform/3.9/dev_guide/secrets.htmlç
+
+oc create secret generic secret_name --from-literal=key1=secret1 --from-literal=key2=secret2 -> create an object with secret data
+oc secrets add --for=mount serviceaccount/serviceaccount-name secret/secret_name ->  Allows the secret to be mounted by a pod running a specific service account. 
+oc new-app --name=eso ngnix -e secret_name=key1 –e secret_name=key2 ->  deploys an application with the secret as an environment 
+
+For example:
+	oc create secret generic mysql \
+	--from-literal='database-user'='mysql'
+	--from-literal='database-password'='redhat'
+	--from-literal='database-root-password'='do280-admin'
+
+	oc create secret generic demo-secret --from-literal=username=demo-user -> defines the key  username and set the key's value to the user demo-user
+On the pod:
+	env: 	
+	   -name:MYSQL_ROOT_PASSWORD
+	     valueFrom:
+	        secretKeyRef:
+	          key: username
+	           name: demo-secret 
+
+oc get secrets -> shows the secrets 
+
+Configmaps
+Documentation: https://docs.openshift.com/container-platform/3.9/dev_guide/configmaps.html
+
+(Is the same as the secret but it's not sensitive information)
+	 oc create configmap mi-configmap --from-literal=serverAddress=172.20.30.40
+oc new-app --name=eso ngnix -e mi-configmap= serverAddress ->  deploys an application with the configmap as an environment 
+
+	env: 	
+	   -name:APISERVER
+	     valueFrom:
+	        ConfigMapKeyRef:
+	          name: special-config
+	           key:serverAddress
+
+	oc get configmaps special-config -o yaml -> shows in yaml the configmap
+
+The only difference between secrets and configmaps is that the first one is encrypted and the second on plain text.
+
+
+Managing security policies
+oc adm policy add-cluster-role-to-user cluster-role username -> adds a cluster role to a user
+oc adm policy remove-cluster-role-from-user cluster-role username -> removes a cluster role to a user
+oc adm policy who-can delete user -> the who-can is to identify the users and roles that con execute a role (in this case who can delete a user)
+
+List of roles:
+Documentation: https://docs.openshift.com/container-platform/3.9/architecture/additional_concepts/authorization.html#roles
+
+basic-user: read access to the project
+edit: create, change and delete resources such as pods and DeploymentConfig. But can’t manages ranges, quotas, and access o permissions to the project
+self-provisioner: cluster-role, the user can create projects
+
+
+admin: can manage all resources in a project even granting access to other users,
+
+oc adm policy add-role-to-user basic-user dev -n wordpress  -> gives to the user dev the basic user role on wordpress project
+
+
+User types:
+Regular users: self-explanatory.
+System users: created automatically during the installation. Example: system:admin, system:openshift-registry
+Service accounts: system users associated with projects. Example: system:serviceaccount:default:deployer
+
+oc adm policy-review scc-subject-review -f output.yaml -> returns the security constrain context limitations.
+
+
+How to run with different selinux context:
+	oc export scc restricted > custom_selinux.yaml -> exports the scc "restricted"
+	We edit the yaml file and put a different name:
+		SeLinuxContext:
+			type: MustRunAs
+		supplementalGroups:
+			type: RunAsAny
+	
+	oc create –f custom_selinux.yaml ->  creates the new scc
+
+---
+
+Persistent Volume Access Modes
+
+Documentation: https://docs.openshift.com/container-platform/3.9/architecture/additional_concepts/storage.html#pv-access-modes
+
+ReadWriteOnce (RWO): The volume can be mounted as read/write by a single node.
+ReadOnlyMany(ROX): the volume can be mounted read-only by many nodes.
+ReadWriteMany (RWX): the volume can be mounted as read/write by many nodes.
+
+On the PV Claims the storageClassName attribute especifies a specific storage class
+
+Using NFS for Persistent Volumes
+	The NFS should have this configuration:
+		-Owned by nfsnobody
+		-Having rwx-------- premissions (0700)
+
+		- Exported using the all_squash option (sync and async options are not used by Openshift unless it's a high latency environment)
+	For example on /etc/exports: /var/export/vol *(rw.async,all_squash)
+
+	To use the nfs the Selinux policy must be changed:
+		setsebool -P virt_use_nfs=true
+		setsebool -P virt_sandbox_use_nfs=true
+
+On the pod, image, security context constrain or in the project, you have to set the seLinuxContext as MustRunAs.
+
+How to install and mount the nfs on the RedHat laboratory:
+Note: the nfs was created on the server support1 the direction is support1.9553.internal where 9553 is your laboratory number (is the same as the rest of the nodes)
+
+Go to your bastion server. Create a playbook with this script:
+
+In this example, we create the partition on the bastion node. 
+export_dir="/var/export/dbvol"
+export_file="/etc/exports.d/dbvol.exports"
+
+Execute this script on support1.9553.internal:
+#!/bin/bash
+
+# Variable declarations
+export_dir="/var/export/dbvol"
+
+# # Check if export directory exists. If not, create it and set ownership and permissions.
+  if [ -d ${export_dir} ]; then
+    echo "Export directory ${export_dir} already exists."
+  else
+    mkdir -p ${export_dir}
+    chown nfsnobody:nfsnobody ${export_dir}
+    chmod 700 ${export_dir}
+    echo "Export directory ${export_dir} created."
+  fi
+# Check if the export file exists in /etc/exports.d. If not, create it.
+  if [ -f ${export_file} ]; then
+    echo "Export file ${export_file} already exists."
+  else
+    echo "${export_dir} *(rw,async,all_squash)" > ${export_file}
+    exportfs -a
+
+export_file="/etc/exports.d/dbvol.exports"
+  fi
+
+Then on support1 execute “setsebool -P virt_use_nfs on”
+
+
+Now you can go to any node and execute:
+mount -t nfs support1.9553.internal:/var/export/dbvol /mnt
+
+(the –t option is for mount command, make sure to write it before the nfs option)
+Where “9553” is the number of your bastion, replace it by your number.
+You can see that the filesystem is mounted. And you can do the guided exercise of chapter 6: Allocating Persistent Storage
+
+
+Create this file mysqldb-volume.yml and paste this tamplate:
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysqldb-volume
+spec:
+  capacity:
+    storage: 3Gi
+  accessModes:
+  - ReadWriteMany
+  nfs:
+    path: /var/export/dbvol
+    server: support1.9553.internal  #(CHANGE THIS TO YOUR NUMBER BASTION!)
+  persistentVolumeReclaimPolicy: Recycle
+
+Execute oc create –f mysqldb-volume.yml
+
+With oc get pv you can see the persistent volume
+
+Execute oc new-app --name=mysqldb --docker-image=registry.access.redhat.com/rhscl/mysql-57-rhel7 -e MYSQL_USER=ose -e MYSQL_PASSWORD=openshift -e MYSQL_DATABASE=quotes
+
+Now create the Volume claim: 
+oc set volume dc/mysqldb --add --overwrite --name=mysqldb-volume-1 -t pvc --claim-name=mysqldb-pvclaim --claim-size=3Gi --claim-mode='ReadWriteMany"
+
+With oc describe pod you can see the volume claim in the pod:
+
+With oc rsh connect to the pod of the database.
+
+Execute mysql -uose –popenshift
+The mysql prompt will appear and write connect quotes; and paste this query:
+create table quote (id integer primary key, msg varchar(250));
+insert into quote values (1, 'Always remember that you are absolutely unique. Just like everyone else.');
+insert into quote values (2, 'Do not take life too seriously. You will never get out of it alive.');
+insert into quote values (3, 'People who think they know everything are a great annoyance to those of us who do.');
+Exit from the database and from the pod, go to the bastion node.
+
+In theory, you can see the filesystem with a database called “quotes”
+
+Also, you have another example here in this Documentation: https://docs.openshift.com/container-platform/3.9/install_config/storage_examples/shared_storage.html
+oc set volume dc/my_app --list -> shows the name of all the volumes claims, on the contrary will show "empty dir"
+
+oc get pv ->shows all the persisten volumes
+oc get pvc-> shows all the persistent volumes claims
+
+The internal image registry should have a volume for the images. On the inventory of ansible to install a volume you have to put the variables:
+
+Documentation: https://docs.openshift.com/container-platform/3.9/install_config/install/advanced_install.html#advanced-install-registry-storage
+
+[OSEv3:vars]
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+openshift_hosted_registry_storage_nfs_directory=/exports
+
+openshift_hosted_registry_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_registry_storage_volume_name=registry
+openshift_hosted_registry_storage_volume_size=10Gi
+
+You can see the registry-volume with oc get pv 
+
+
+Chapter 7
+Selector: is a ste of labels that all of the pods managed by the replication controller must mucatch. 
+The number of replicas is defined on “replicas” in the DeploymentConfig.
+
+oc scale --replicas=5 dc myapp -> scales the applications to more pods in this case 5.
+
+Autoscaling pods:
+Documentation: https://docs.openshift.com/container-platform/3.9/dev_guide/pod_autoscaling.html
+
+oc autoscale dc/myapp --min 1 --max 10 --cpu-percent=80 -> creates a HorizontalPodAutoscaler autoscale the pods to keep the pods under 80% of their total requested cpu capacity.
+oc hpa/frontend -> shows all the horizontalpodautoscaler, hpa means “HorizontalPodAutoscaler”
+
+Scheduling rules:
+Documentation: https://docs.openshift.com/container-platform/3.9/admin_guide/scheduling/pod_affinity.html
+
+affinity rules: schedules the related pods in the same node. For example, in order to avoid network latency. 
+anti-affinity rules:  avoids to schedule all the pods in the same node in order to avoid great consumption resources on a node and for high availability. 
+
+/etc/origin/master/scheduler.json -> defines a set of predicates and functions. You can configure the scheduler.
+
+Scheduling and topology:
+region: set of hosts in close geographical aerea 
+zone (availability zone): set of hosts that might fall together because they are interdependent.
+oc label node1 region=us-west zone=powera1 –overwrite -> changes the label of the node.
+oc label node node2 region=us-west zone=power1a --overwrite
+oc get node node1.lab.example.com --show-labels -> shows the labels of the node
+oc get node node1.lab.example.com  -L region -L zone -> shows the value of the labels “region” and “zone”
+
+Take node down for maitenance (unschedule nodes):
+oc adm manage-node --schedulable=false node2.lab.example.com -> mark the node as unschedulable
+oc adm drain node2.lab.example.com -> the pods are destroyed and recreated in other nodes
+
+oc adm manage-node --schedulable=true node2.lab.example.com -> mark the node as schedulable, execute this once the maintenance has been done.
+oc patch dc myapp '{"spec":{"template":{"nodeSelector":{"env":"qa"}}}}' -> modifies the dc of myapp in order to be deployed only on the nodes with the label env=qa
+
+Managing The default Project:
+This is to configure a set nodes to run only the pods that are Openshift infraestrcture pods, those pods are on the project “default”
+1. Label the dedicated nodes with the “region=infra” label
+
+2. oc annotate --overwrite namespace default openshift.io/node-selector='region=infra' -> Configure a fedault node selector for the default namespace
+
+oc apply -f dc.yml -> adds the changes to a dc
+oc replace –f dc.yml -> replaces the previous one, in this case a dc.
+
+
+Managing pods with NodeSelector:
+
+This part is not included on the book but is part of an exercise. This is to migrate pods to a node from the rest of the nodes by including a label to a node and to the same pod:
+In this an example we have the three nodes of the laboratory (node1, node2 and node3). We are going assign to an each node a label called “region” then we configure a DeploymentConfig to migrate and maintain all the pods of an application on the node with a corresponding label.
+
+•	We assign to each node the label region:
+oc label node node1.9553.internal region=madrid
+oc label node node2.9553.internal region=valencia
+oc label node node3.9553.internal region=bilbao
+•	We export the DeploymentConfig of an application (for example my-app) to include the label
+oc export dc my-app –o yaml > dc-my-app.yaml
+•	We edit file. We write “nodeSelector:” and “zone: bilbao” down of the second “spec” (not on the first “spec”)
+
+•	The we apply the changes
+oc replace -f  dc-my-app.yaml
+
+•	Now you can see that the pods of my-app are going to be migrated to the node3
+
+Managing Image Streams:
+The Image Streams are not the same as the docker image. They are templates that have all the requirements to run a container.
+oc tag ruby:latest ruby:2.0 ->  is like the the docker tag command. In this case the ruby:lastest points to the ruby:2.0
+oc tag -d ruby:latest -> removes the tag of the Image Stream
+
+
+oc tag --alias=true ruby:latest ruby:2.0-> if you want to makse sure that the destination tag  (ruby:2.0) is updated whenever the source tag is updated (ruby:latest)
+oc tag --scheduled=true ruby:latest ruby:2.0 -> reimports the tag
+oc tag --reference-policy=local ruby:latest ruby:2.0  -> intructs Docker to fetch the tagged image from the integrated registry also allows to pulling from insecure registries (with this the --insecure-registry in the Docker daemon it's not necessary)
+
+Managing Templates:
+	oc create –f filename –l name=mylabel -> creates an object with the label “mylabel” 
+oc get templates -n openshift -> you see the predefined templates
+The rest of the chapter explains how to search the predefined templates on the web console (on page 250)
+
+
+Chapter 8
+
+Components of the metric subsystem:
+
+Heapster: collects the metrics from all the nodes in a Kubernetes clusters.  Send them to Hawkular metrics
+Hawkular Metrics: provides REST API for storing and querying time-series data. 
+Hawkular Agent: collects custom performance metrics from applications and forwards them to Hawkular Metrics.
+Cassandra: Stores time-series data in a non-relational distributed database. It requieres a Persistent Volume
+On the Openshift 4.0 this will be deprecated and Prometheus will be the metric susbsytem instead.
+
+
+oc get pod -n openshift-infra -> you can see the pods where the metric system is. 
+oc describe node [node-name] -> only describes the resources requests declared by the nodes.
+oc adm top -> you can see the metrics , it uses the Hawkular Metrics API. It shows the actual usage of each resource. 
+
+
+Metrics installation 
+
+All the variables to install are in https://docs.openshift.com/container-platform/3.9/install_config/cluster_metrics.h HYPERLINK "https://docs.openshift.com/container-platform/3.9/install_confi HYPERLINK "https://docs.openshift.com/container-platform/3.9/install_config/cluster_metrics.html"g HYPERLINK "https://docs.openshift.com/container-platform/3.9/install_config/cluster_metrics.html"/cluster_metrics.html"tml
+
+
+You have to put those variables on the inventory file in [OSEv3:vars]
+
+### Run the metrics playbook
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/openshift-metrics/config.yml \
+-e openshift_metrics_image_prefix=registry.lab.example.com/openshift3/ose- \
+-e openshift_metrics_image_version=v3.9 \
+-e openshift_metrics_heapster_requests_memory=300M \
+-e openshift_metrics_hawkular_requests_memory=750M \
+-e openshift_metrics_cassandra_requests_memory=750M \
+-e openshift_metrics_cassandra_storage_type=pv \
+-e openshift_metrics_cassandra_pvc_size=5Gi \
+-e openshift_metrics_cassandra_pvc_prefix=metrics \
+-e openshift_metrics_install_metrics=True \
+-e openshift_metrics_hawkular_hostname=hawkular-metrics.apps.lab.example.com
+
+
+You have to create a PV of at least 5 GB with the name “metrics” on the inventory file for Cassandra.  openshift_metrics_cassandra_pvc_prefix=metrics
+Then execute "ansible-playbook <OPENSHIFT_ANSIBLE_DIR>/playbooks/openshift-metrics/config.yml   -e openshift_metrics_install_metrics=True"
+To uninstall the metrics you only have to execute the ansible-playbook again but with “-e openshift_metrics_install_metrics=False”
+
+oc get pods -n openshift-infra ->  shows the pods of the metrics
+
+importante:
+
+After the installation of the metric system you have to open this: https://hawkular-metrics.<master-wildcard-domain> -> where “master-wildcard-domain” is the Openshift domain. You can also see the direction with oc get route -n openshift-infra
+
+
+--
+
+Resource requests and limits for pods:
+Resource requests: indicates that a pod is not able to run with less than the specified amount of compute resources. The scheduler tries to find a node with sufficient compute resources to satisfy the pod requests
+Resource limits: used to prevent a pod form using up all compute resources from a node. The node that runs a pod configures the Linux kernel cgroups feature to enforce the resource limits for the pod.
+They are setup on the DeploymentConfig
+
+To kinds of resources managed by the quotas:
+Object counts: the number of Kubernetes resources such as pods, services and routes
+Compute resources: the number of physical or virtual hardware resources, such as CPU, memory and storage capacity
+ResourceQuota constrains are applied for the project as a whole!
+
+Both the ResourceQuota and LimitRange are created by a template with the command oc create -f
+
+The difference between Quotas and LimitResources: the quotas are for the pods that haven't been deployed yet. The resources limits are for the deployed pods. Also the limit range is for a simple resource (pod for example) and quota is the limit of all the resources (pods,services…) in a project. 
+"Quotas are boundaries configured per namespace and act as a upper limit for resources in that particular namespace. It essentially defines the capacity of the namespace. How this capacity is used is up to the user using the namespace. For example if the total capacity is used by one or one hundred pods is not dictated by the quota, except when a max number of pods is configured."
+"A limit range is also configured on a namespace, however a limit range defines limits per pod and/or container in that namespace. It essentially provides CPU and memory limits for containers and pods."
+"Compute resources are defined on the Pod or the Container spec, in for example the deploymentconfig or the replication controller. And define the CPI and Memory limits for that particular pod."
+Compute Resources:
+
+Documentation: https://docs.openshift.com/container-platform/3.6/dev_guide/compute_resources.html
+When authoring a pod configuration file, you can optionally specify how much CPU and memory (RAM) each container needs in order to better schedule pods in the cluster and ensure satisfactory performance.
+
+CPU is measured in units called millicores. Each node in a cluster inspects the operating system to determine the amount of CPU cores on the node, then multiplies that value by 1000 to express its total capacity. For example, if a node has 2 cores, the node’s CPU capacity would be represented as 2000m. If you wanted to use 1/10 of a single core, it would be represented as 100m.
+Memory is measured in bytes. In addition, it may be used with SI suffices (E, P, T, G, M, K) or their power-of-two-equivalents (Ei, Pi, Ti, Gi, Mi, Ki).
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - image: openshift/hello-openshift
+    name: hello-openshift
+    resources:
+      requests:
+        cpu: 100m 
+        memory: 200Mi 
+
+		      limits:
+        cpu: 200m 
+        memory: 400Mi 
+
+From: https://www.rubix.nl/blogs/openshift-limits-explained/
+
+All limits have a request and a max which define further ranges the Pod can operate on. Where the request is by all intense and purposes “guaranteed” (as long as the underlying node has the capacity). This gives the option to implicitly set different QoS tiers.
+BestEffort – no limits are provided whatsoever. The Pod claims whatever it needs, but is the first one to get scaled down or killed when other Pods request for resources.
+Burstable – The request limits are lower than the max limits. The initial limit is guaranteed, but the Pod can, if resources are available, burst to its maximum.
+ Guaranteed – the request and max are identical, so it directly claims the max resources, even though the pod might not initially use all resources they are already claimed by the cluster, and therefore guaranteed
+
+ 
+ Quotas:
+Documentation: https://docs.openshift.com/co HYPERLINK "https://docs.openshift.com/container-platform/3.9/admin_guide/quota.html
+
+This is a definition:
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-resources
+spec:
+  hard:
+    pods: "4" -> This is an object limit, the limit of pods
+    requests.cpu: "1" -> cross all pods in a non-terminal state, the sum of CPU requests cannot exceed 1 core.    
+requests.memory: 1Gi 
+    limits.cpu: "2" 
+	
+	ejemplo completo:
+	
+	cat <<EOF > compute-resources.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-resources
+spec:
+  hard:
+    pods: "12"
+    replicationcontrollers: "3"
+    services: "6"
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 1Gi
+    requests.nvidia.com/gpu: 4
+EOF
+
+
+
+oc create quota dev-quota --hard=services=10 --hard=cpu=1300m --hard=memory=1.5Gi -> creates a resource quota
+
+oc get resourcequota -> shows all the ResourceQuotas
+oc describe resourcequota object-quota -> shows the statistics of the quota
+oc describe quota -> how the cumulative limits set for all ResourceQuota
+oc delete resourcequota compute-quota -> deletes the quota
+When a quota is created in a project, the ability to create new resources will be restricted if it can violate the quota until the project has calculated updated usage statistics.
+If a modification exceed the quota for a count object, the action is denied. If it exceeds the quota for a compute resource, the operation does not fail immediately. Openshift retries the last operation to giving the opportunity to increase the quota or to perform a corrective action. 
+ 
+If a quota that restricts usage of compute resources for a project is set, Openshift refuses to create pods that do not specify resource request or resource limits for that compute resource. 
+When allocating compute resources, each container may specify a request and a limit value each for CPU and memory. Quotas can restrict any of these values.
+If the quota has a value specified for requests.cpu or requests.memory, then it requires that every incoming container make an explicit request for those resources. If the quota has a value specified for limits.cpu or limits.memory, then it requires that every incoming container specify an explicit limit for those resources.
+
+Limit ranges: 
+
+A limit range, defined by a LimitRange object, enumerates compute resource constraints in a project at the pod, container, image, image stream, and persistent volume claim level, and specifies the amount of resources that a pod, container, image, image stream, or persistent volume claim can consume.
+All resource create and modification requests are evaluated against each LimitRange object in the project. If the resource violates any of the enumerated constraints, then the resource is rejected. If the resource does not set an explicit value, and if the constraint supports a default value, then the default value is applied to the resource.
+
+Documentation: https://docs.openshift.com/container-platform/3.9/admin_guide/limits.html
+
+
+a limit range defines limits per pod and/or container in that namespace
+
+LIMITS RANGE:
+
+
+Ejemplo:
+apiVersion: "v1"kind: "LimitRange"metadata:
+  name: "core-resource-limits" 
+spec:
+  limits:
+    - type: "Pod"
+      max:
+        cpu: "2" 
+        memory: "1Gi" 
+      min:
+        cpu: "200m" 
+        memory: "6Mi" 
+    - type: "Container"
+      max:
+        cpu: "2" 
+        memory: "1Gi" 
+      min:
+        cpu: "100m" 
+        memory: "4Mi" 
+      default:
+        cpu: "300m" 
+        memory: "200Mi" 
+      defaultRequest:
+        cpu: "200m" 
+        memory: "100Mi" 
+      maxLimitRequestRatio:
+        cpu: "10" 
+
+
+Two types: CPU and Memory for the next objects:
+	Container
+	Pod
+	Image
+
+	PVC (Persistent Volume Claim)
+
+oc get limitranges -> shows the limitranges
+oc describe limitranges compute-limits -> describe the limitranges
+oc delete limitranges dev-limits -> delete the limit range
+
+If the new resource violates the minimun or maximun constrain enumerated by any LimitRange, then the resource is rejected. If the new resource does not set an explicit value, and the constrain supports a default value, the default value is applied to the new resource as its usage value.
+The violation of a LimitRange constrains prevents pod from being created, showing clear error messages. Violation of ResourceQuota constrains prevents a pod from being scheduled to any node. The pod might be created but remain in the pending state.
+
+Applying quotas to multiple projects:
+
+Documentation: https://docs.openshift.com/container-platform/3.9/admin_guide/multiproject_quota.htm
+
+
+ClusterResourceQuota ->  is created at cluster level and applies to diferent obejects. 
+
+oc create clusterquota user-qa --project-annotation-selector openshift.io/requester=qa \
+--hard pods 12 --hard secrets=20 -> creates a cluster resource quota for all the projects owned by the "qa" user
+
+
+oc create clusterquota env-qa --project-label-selector environment=qa --hard pods=10 \
+--hard services=5 -> creates a cluster resource quota for all the projects owned by the "environment=qa" label
+
+oc delete clusterquota -> deletes the clusterquota
+
+
+
+Monitoring applications with probes: 
+Documetation: https://docs.openshift.com/container-platform/3.9/dev_guide/application_health.html#container-health-checks-using-probes
+Probe: is a kubernetes action that periodically performs diagnostics on a running container. Probes can be either configured using the oc command-line or the web console. It's more easy to create the through the web console.
+
+Liveness Probe: the probe determines whether an application running in a container is in a healthy state. If it is unhealthy is killed and redeployed again by Openshift. 
+Readiness Probe: determines whether a container is ready to serve requests.  If it's failed Openshift removes all the endpoints from all the services. 
+
+Timeout options for probes:
+initialDelaySeconds: Mandatory. Determines how long to wait after the container starts before beginning the probe
+timeoutSeconds: Mandatory. Determines how long to wait for the probe to finish. 
+periodSeconds: Optional. Specifies the frequency of the checks.
+successThreshold: Optional. Specifies the minimum consecutive successes for the probe to be considered successful after it has failed.
+failureThreshold: Optional. Specifies the minimum consecutive failures for the probe to be considered failed after it has succeeded. This field is optional
+
+Methods of checking the application health:
+
+Documentation: https://docs.openshift.com/container-platform/3.9/dev_guide/application_health.html#container-health-checks-using-probes
+HTTP Checks: send http calls, the response code is between 200 and 399
+Container Execution Checks: the kubelet executes a command inside the container. It's success if returns 0
+TCP Socket Checks: the kubelet tries to open a socket. It's success a connection is established.
+
+
+
